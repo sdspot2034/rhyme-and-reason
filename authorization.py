@@ -75,6 +75,39 @@ def authorize_app(auth_file = 'auth_code.txt', client_id = None, redirect_url = 
     return get_auth_code(auth_file)
 
 
+def get_auth_tokens(client_id, client_secret, redirect_url, auth_file):
+    auth_string = client_id + ":" + client_secret
+    auth_bytes = auth_string.encode("utf-8")
+    auth_encoded = str(base64.b64encode(auth_bytes), "utf-8")
+    
+    auth_code = authorize_app(auth_file, client_id, redirect_url)
+    
+    token_endpoint = "https://accounts.spotify.com/api/token"
+    data = {
+        "grant_type":"authorization_code",
+        "code":auth_code,
+        "redirect_uri":redirect_url,
+    }
+    headers = {
+        "Authorization": "Basic " + auth_encoded,
+        "Content-type": "application/x-www-form-urlencoded"
+    }
+    result = requests.post(token_endpoint, headers=headers, data=data)
+    json_results = json.loads(result.content)
+    
+    if 'error' in json_results.keys():
+        if json_results['error_description'] == 'Authorization code expired':
+            print('Authorization code expired. Please reauthorize application.')
+            if not client_id or not redirect_url or not auth_file:
+                raise ValueError("Following arguments are required: client_id, redirect_url, auth_file.")
+            first_authorization(client_id, redirect_url, auth_file)
+        
+        else: raise Exception(json_results['error_description'])
+    
+    return json_results
+
+
+
 def get_access_token (
     token_file = 'access_token.json',
     client_id = None,
@@ -121,36 +154,4 @@ def refresh_access_tokens(client_id, client_secret, refresh_token):
     
     result = requests.post(refresh_endpoint, headers=headers, data=data)
     json_results = json.loads(result.content)
-    return json_results
-
-
-def get_auth_tokens(client_id, client_secret, redirect_url, auth_file):
-    auth_string = client_id + ":" + client_secret
-    auth_bytes = auth_string.encode("utf-8")
-    auth_encoded = str(base64.b64encode(auth_bytes), "utf-8")
-    
-    auth_code = authorize_app(auth_file, client_id, redirect_url)
-    
-    token_endpoint = "https://accounts.spotify.com/api/token"
-    data = {
-        "grant_type":"authorization_code",
-        "code":auth_code,
-        "redirect_uri":redirect_url,
-    }
-    headers = {
-        "Authorization": "Basic " + auth_encoded,
-        "Content-type": "application/x-www-form-urlencoded"
-    }
-    result = requests.post(token_endpoint, headers=headers, data=data)
-    json_results = json.loads(result.content)
-    
-    if 'error' in json_results.keys():
-        if json_results['error_description'] == 'Authorization code expired':
-            print('Authorization code expired. Please reauthorize application.')
-            if not client_id or not redirect_url or not auth_file:
-                raise ValueError("Following arguments are required: client_id, redirect_url, auth_file.")
-            first_authorization(client_id, redirect_url, auth_file)
-        
-        else: raise Exception(json_results['error_description'])
-    
     return json_results
