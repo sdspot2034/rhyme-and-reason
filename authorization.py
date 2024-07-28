@@ -3,6 +3,7 @@ import urllib.parse as urlparse
 import base64
 import requests
 import json
+import os
     
 def first_authorization(client_id, redirect_url, auth_file):
     code = None
@@ -53,12 +54,8 @@ def first_authorization(client_id, redirect_url, auth_file):
 
     
     
-def peek_file(file_path, read_mode='r'):
-    try:
-        file = open(file_path, read_mode)
-        return True
-    except FileNotFoundError: return False
-
+def peek_file(file_path):
+    return os.path.isfile(file_path)
 
 
 def get_auth_code(auth_file):
@@ -67,33 +64,47 @@ def get_auth_code(auth_file):
     return auth_code
 
     
-def authorize_app(client_id, redirect_url, auth_file = 'auth_code.txt'):
+def authorize_app(auth_file = 'auth_code.txt', client_id = None, redirect_url = None):
     authorized = peek_file(auth_file)
 
     if not authorized:
+        if not client_id or not redirect_url: 
+            raise ValueError("Following arguments are required:  client_id, redirect_url, auth_file.")
         first_authorization(client_id, redirect_url, auth_file)
 
     return get_auth_code(auth_file)
 
 
-def get_access_token(client_id, client_secret):
-    auth_string = client_id + ":" + client_secret
-    auth_bytes = auth_string.encode("utf-8")
-    auth_encoded = str(base64.b64encode(auth_bytes), "utf-8")
+def get_access_token (
+    token_file = 'access_token.json',
+    client_id = None,
+    client_secret = None,
+    redirect_url = None,
+    auth_file = None,
+):
     
-    auth_api_url = "https://accounts.spotify.com/api/token"
-    headers = {
-        "Authorization": "Basic " + auth_encoded,
-        "Content-type": "application/x-www-form-urlencoded"
-    }
-    data = {"grant_type": "client_credentials"}
-    result = requests.post(auth_api_url, headers=headers, data=data)
-    json_results = json.loads(result.content)
-    token = json_results["access_token"]
-    return(token)
+    access_token_exists = peek_file(token_file)
+    
+    if access_token_exists:
+        with open(token_file) as file:
+            token_details = json.load(file)
+    
+    else:
+        if not client_id or not client_secret or not redirect_url or not auth_file: 
+            raise ValueError("Following arguments are required:  client_id, client_secret, redirect_url, auth_file.")
+        
+        
+        token_details = get_auth_tokens(client_id, client_secret, redirect_url, auth_file)
+        with open(token_file, 'w+') as file:
+            file.write(json.dumps(token_details, indent=4))
+        
+        # Delete auth_file as the authorization has been used and cannot be reused
+        if os.path.isfile(auth_file): os.remove(auth_file)
+        
+    return token_details['access_token']
 
 
-def refresh_access_tokens(refresh_token):
+def refresh_access_tokens(client_id, client_secret, refresh_token):
     auth_string = client_id + ":" + client_secret
     auth_bytes = auth_string.encode("utf-8")
     auth_encoded = str(base64.b64encode(auth_bytes), "utf-8")
@@ -118,8 +129,7 @@ def get_auth_tokens(client_id, client_secret, redirect_url, auth_file):
     auth_bytes = auth_string.encode("utf-8")
     auth_encoded = str(base64.b64encode(auth_bytes), "utf-8")
     
-    with open(auth_file,'r+') as file:
-        auth_code = file.read()
+    auth_code = authorize_app(auth_file, client_id, redirect_url)
     
     token_endpoint = "https://accounts.spotify.com/api/token"
     data = {
@@ -133,4 +143,14 @@ def get_auth_tokens(client_id, client_secret, redirect_url, auth_file):
     }
     result = requests.post(token_endpoint, headers=headers, data=data)
     json_results = json.loads(result.content)
+    
+    if 'error' in json_results.keys():
+        if json_results['error_description'] == 'Authorization code expired':
+            print('Authorization code expired. Please reauthorize application.')
+            if not client_id or not redirect_url or not auth_file:
+                raise ValueError("Following arguments are required: client_id, redirect_url, auth_file.")
+            first_authorization(client_id, redirect_url, auth_file)
+        
+        else: raise Exception(json_results['error_description'])
+    
     return json_results
