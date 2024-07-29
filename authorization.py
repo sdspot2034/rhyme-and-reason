@@ -8,12 +8,12 @@ import time
 from functools import wraps
 
 class SpotifyAuth:
-    def __init__(self, client_id, client_secret, redirect_url, token_file='access_token.json'):
+    def __init__(self, client_id, client_secret, redirect_url):
         self.client_id = client_id
         self.client_secret = client_secret
         self.redirect_url = redirect_url
-        self.token_file = token_file
         self.auth_code = None
+        self.token = None
 
     def first_authorization(self):
         code = None
@@ -71,16 +71,18 @@ class SpotifyAuth:
         self.auth_code = code
 
     def authorize_app(self, auth_file = None):
-        if not self.auth_code:
+        if not auth_file:
             self.first_authorization()
-        else: self.set_auth_code_from_file(auth_file)
+        else:
+            self.set_auth_code_from_file(auth_file)
 
-    def get_auth_tokens(self):
+
+    def set_access_tokens(self, auth_file = None):
         auth_string = self.client_id + ":" + self.client_secret
         auth_bytes = auth_string.encode("utf-8")
         auth_encoded = str(base64.b64encode(auth_bytes), "utf-8")
 
-        auth_code = self.authorize_app()
+        auth_code = self.authorize_app(auth_file)
 
         token_endpoint = "https://accounts.spotify.com/api/token"
         data = {
@@ -104,19 +106,22 @@ class SpotifyAuth:
 
         json_results['expires_at'] = int(time.time()) + json_results['expires_in']
 
-        return json_results
+        self.token = json_results
 
-    def get_access_token(self):
-        access_token_exists = self.peek_file(self.token_file)
-
-        if access_token_exists:
-            with open(self.token_file) as file:
-                token_details = json.load(file)
-        else:
-            token_details = self.get_auth_tokens()
-            with open(self.token_file, 'w+') as file:
-                json.dump(token_details, file, indent=4)
-                
+    
+    def set_access_token_from_file(self, token_file):
+        with open(token_file) as file:
+            token_details = json.load(file)
+        self.token = token_details
+        
+    
+    def get_access_token(self, token_file = None, auth_file = None):
+        if not self.token and not token_file:
+            self.set_access_token(auth_file)
+        elif not self.token:
+            self.set_access_token_from_file(token_file)
+            
+        access_token_exists = os.path.isfile(token_file)
 
         if int(time.time()) >= token_details['expires_at']:
             token_details = self.refresh_access_tokens(token_details['refresh_token'])
