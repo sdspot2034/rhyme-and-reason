@@ -8,12 +8,12 @@ import time
 from functools import wraps
 
 class SpotifyAuth:
-    def __init__(self, client_id, client_secret, redirect_url, auth_file='auth_code.txt', token_file='access_token.json'):
+    def __init__(self, client_id, client_secret, redirect_url, token_file='access_token.json'):
         self.client_id = client_id
         self.client_secret = client_secret
         self.redirect_url = redirect_url
-        self.auth_file = auth_file
         self.token_file = token_file
+        self.auth_code = None
 
     def first_authorization(self):
         code = None
@@ -50,8 +50,7 @@ class SpotifyAuth:
                 self.shutdown_server()
                 return f"Authorization failed with the following error: {err}"
             else:
-                with open(self.auth_file, 'w+') as file:
-                    file.write(code)
+                code = self.auth_code
                 self.shutdown_server()
                 return "<h1> Authorization successful. Please close this window. </h1>"
 
@@ -63,19 +62,18 @@ class SpotifyAuth:
 
         app.run(host="localhost", port=5050)
 
-    def peek_file(self, file_path):
-        return os.path.isfile(file_path)
-
     def get_auth_code(self):
-        with open(self.auth_file, 'r') as file:
-            auth_code = file.read()
-        return auth_code
+        return self.auth_code
+    
+    def set_auth_code_from_file(self, auth_file):
+        with open(auth_file, 'r') as file:
+            code = file.read(auth_file)
+        self.auth_code = code
 
-    def authorize_app(self):
-        authorized = self.peek_file(self.auth_file)
-        if not authorized:
+    def authorize_app(self, auth_file = None):
+        if not self.auth_code:
             self.first_authorization()
-        return self.get_auth_code()
+        else: self.set_auth_code_from_file(auth_file)
 
     def get_auth_tokens(self):
         auth_string = self.client_id + ":" + self.client_secret
@@ -118,9 +116,7 @@ class SpotifyAuth:
             token_details = self.get_auth_tokens()
             with open(self.token_file, 'w+') as file:
                 json.dump(token_details, file, indent=4)
-
-            if os.path.isfile(self.auth_file):
-                os.remove(self.auth_file)
+                
 
         if int(time.time()) >= token_details['expires_at']:
             token_details = self.refresh_access_tokens(token_details['refresh_token'])
