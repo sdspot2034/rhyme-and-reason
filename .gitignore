@@ -5,3 +5,4 @@ refresh_token.json
 .ipynb_checkpoints/
 __pycache__/
 .DS_Store
+SQL_CREDENTIALS.json
