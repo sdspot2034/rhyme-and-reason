@@ -13,14 +13,16 @@ host = cred['host']
 target_engine = create_engine(f'mysql+mysqlconnector://{user}:{pswd}@{host}:3306/spotify_db')
 
 
-def save_to_sql(df, table, key_cols, mode, wid=None, other_cols=None):
+def save_to_sql(df, table, key_cols, mode, wid, other_cols=None):
     
     list_of_records = df.to_dict(orient='records')
     all_columns = table.columns
     
     if mode == 'upsert':
         insert_stmt = insert(table).values(list_of_records)
-        update_columns = {c_name: insert_stmt.inserted[c_name] for c_name in all_columns if c_name not in key_cols}
+        
+        ignore_cols = key_cols + wid
+        update_columns = {c.name: insert_stmt.inserted[c.name] for c in all_columns if c.name not in ignore_cols}
         upsert_stmt = insert_stmt.on_duplicate_key_update(update_columns)
         
         with target_engine.connect() as connection:
