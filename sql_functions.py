@@ -27,6 +27,13 @@ def save_to_sql(df, table, key_cols, mode, wid, other_cols=None):
         
         with target_engine.connect() as connection:
             connection.execute(upsert_stmt)
+            
+    elif mode == 'ignore':
+        insert_stmt = insert(table).values(list_of_records)
+        insert_ignore_stmt = insert_stmt.prefix_with('IGNORE')
+
+        with target_engine.connect() as connection:
+            connection.execute(insert_ignore_stmt)
 
     
 def read_from_sql(query):
