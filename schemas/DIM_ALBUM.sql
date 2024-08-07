@@ -8,3 +8,6 @@ CREATE TABLE DIM_ALBUM (
     , total_tracks INT
     , cover_image_url TEXT
 )
+
+ALTER TABLE DIM_ALBUM
+MODIFY COLUMN release_date VARCHAR(50)
