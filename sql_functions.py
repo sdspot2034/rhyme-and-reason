@@ -29,3 +29,7 @@ def save_to_sql(df, table, key_cols, mode, wid, other_cols=None):
             connection.execute(upsert_stmt)
 
     
+def read_from_sql(query):
+    with target_engine.connect() as connection:
+        df = pd.read_sql(query, connection)
+    return df        
