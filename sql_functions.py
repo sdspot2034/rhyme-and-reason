@@ -34,6 +34,13 @@ def save_to_sql(df, table, key_cols, mode, wid, other_cols=None):
 
         with target_engine.connect() as connection:
             connection.execute(insert_ignore_stmt)
+            
+    elif mode == 'append':
+        insert_stmt = insert(table).values(list_of_records)
+        
+        with target_engine.connect() as connection:
+            connection.execute(insert_stmt)
+        
 
     
 def read_from_sql(query):
