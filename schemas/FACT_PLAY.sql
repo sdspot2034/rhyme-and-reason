@@ -4,3 +4,5 @@ CREATE TABLE FACT_PLAY (
     , played_at TIMESTAMP NOT NULL 
     , context_playlist TEXT NOT NULL
 )
+
+ALTER TABLE FACT_PLAY MODIFY context_playlist TEXT;
