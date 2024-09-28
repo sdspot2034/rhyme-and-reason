@@ -20,6 +20,7 @@ def get_listening_history(access_token, cdc_time, limit=50):
     params={"after": str(cdc_time), "limit":str(limit)}
     result = requests.get(ENDPOINTS['play-history'], headers=headers, params=params)
     track_list = result.json()
+    if 'error' in track_list: return track_list
     for item in track_list['items']:
         if 'available_markets' in item['track']: del item['track']['available_markets']
         if 'available_markets' in item['track']['album']: del item['track']['album']['available_markets']
