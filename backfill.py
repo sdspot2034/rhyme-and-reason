@@ -5,6 +5,8 @@ import spotify_functions as spotify
 import json
 from helpers.helpers import to_datetime
 
+from time import strftime, localtime
+
 # STEP - 1: GET SECRETS
 with open('client-secrets-rnr.json','r+') as secrets_file:
     secrets = json.load(secrets_file)
@@ -21,6 +23,21 @@ access_token = spotify_authorisation.get_access_token()
 # STEP - 3: GET LAST LOADED DATE
 query = "SELECT MAX(played_at) FROM FACT_PLAY"
 last_date = to_datetime(read_from_sql(query).values[0][0])
+# print(last_date)
 cdc_time = int(last_date.timestamp()*1e3)
+# print(cdc_time)
+next = cdc_time
 
-print(spotify.get_listening_history(access_token, cdc_time))
+i=1
+while next:
+    print("\nIteration",i,":",strftime('%Y-%m-%d %H:%M:%S', localtime(cdc_time/1000)))
+    results = spotify.get_listening_history(access_token, cdc_time)
+    if len(results['items']) == 0: break
+
+    print(len(results['items']))
+    print(results['next'])
+    print(results['cursors'])
+
+    next = results['next']
+    cdc_time = int(results['cursors']['after'])
+    i=i+1
