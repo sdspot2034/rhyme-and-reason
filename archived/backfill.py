@@ -1,3 +1,12 @@
+##############################################################################
+#  DEVELOPER NOTE:                                                           #
+#  ~~~~~~~~~~~~~~                                                            #
+#  This code has been archived due to lack of utility                        #
+#  Spotify API stores only last 50 songs played.                             #
+#  Therefore, Web API cannot be used for backfilling.                        #
+#  Original location: / (root)                                               #
+##############################################################################
+
 from dw_etl_scripts import * 
 from authorization import SpotifyAuth
 from sql_functions import *
@@ -22,10 +31,11 @@ access_token = spotify_authorisation.get_access_token()
 
 # STEP - 3: GET LAST LOADED DATE
 query = "SELECT MAX(played_at) FROM FACT_PLAY"
-last_date = to_datetime(read_from_sql(query).values[0][0])
+# last_date = to_datetime(read_from_sql(query).values[0][0])
 # print(last_date)
-cdc_time = int(last_date.timestamp()*1e3)
-# print(cdc_time)
+# cdc_time = int(last_date.timestamp()*1e3)
+cdc_time = 1704047400000
+print(cdc_time)
 next = cdc_time
 
 i=1
@@ -37,6 +47,7 @@ while next:
     print(len(results['items']))
     print(results['next'])
     print(results['cursors'])
+    print(results['items'][0]['played_at'], results['items'][-1]['played_at'])
 
     next = results['next']
     cdc_time = int(results['cursors']['after'])
