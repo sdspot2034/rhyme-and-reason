@@ -6,3 +6,4 @@ refresh_token.json
 __pycache__/
 .DS_Store
 SQL_CREDENTIALS.json
+bigquery_pk.json
